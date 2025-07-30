@@ -1,0 +1,9 @@
+11 - block_size
+5 - C
+1 - dilate_ksize
+1 - erode_ksize
+1 - open_ksize
+1 - close_ksize
+1 - grad_ksize
+1 - tophat_ksize
+1 - blackhat_ksize
