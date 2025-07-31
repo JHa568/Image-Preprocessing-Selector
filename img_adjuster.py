@@ -8,7 +8,7 @@ images_loc = "../images/"
 
 entries = {}
 
-original = cv2.imread(images_loc + "COMP4.jpg", cv2.IMREAD_GRAYSCALE) #  
+original = cv2.imread(images_loc + "sudoku.jpg", cv2.IMREAD_GRAYSCALE) #  
 original = cv2.resize(original, (300, 300))  # Resize for better visibility
 if original is None:
     raise FileNotFoundError("Make sure 'your_image.jpg' exists in the current directory.")
