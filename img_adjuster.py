@@ -4,11 +4,11 @@ import tkinter as tk
 from tkinter import *
 from PIL import Image, ImageTk
 
-images_loc = "./images/"
+images_loc = "../images/"
 
 entries = {}
 
-original = cv2.imread(images_loc + "image100.jpg", cv2.IMREAD_GRAYSCALE) #  
+original = cv2.imread(images_loc + "COMP4.jpg", cv2.IMREAD_GRAYSCALE) #  
 original = cv2.resize(original, (300, 300))  # Resize for better visibility
 if original is None:
     raise FileNotFoundError("Make sure 'your_image.jpg' exists in the current directory.")
@@ -122,8 +122,6 @@ def update_image(*args):
     img = ImageTk.PhotoImage(Image.fromarray(thresh))
     label.imgtk = img
     label.config(image=img)
-
-    
 
 def save_parameters():
     params = {

@@ -9,4 +9,4 @@
 1 - blackhat_ksize
 0 - low_canny_thresh
 0 - high_canny_thresh
-3 - aperture_canny_thresh
+7 - aperture_canny_thresh
