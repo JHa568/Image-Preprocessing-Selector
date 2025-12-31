@@ -31,7 +31,7 @@ BRIGHTNESS_THRESHOLD_HIGHER = 235
 BRIGHTNESS_DIFF = 30
 
 def create_image():
-    img = cv.imread(images_loc + 'COMP5.jpg', cv.IMREAD_GRAYSCALE)
+    img = cv.imread(images_loc + '1.png', cv.IMREAD_GRAYSCALE)
     img = cv.resize(img, (img_w, img_h))
     return img
 
@@ -87,9 +87,13 @@ def cut_off(image, contours):
     
     print(f"x: {x}, y: {y}, w: {w}, h: {h}")
 
-    cropped = cv.resize(cropped, (img_w, img_h))
+    return cropped
 
-    _, thresh = cv.threshold(cropped, 0, 255, cv.THRESH_BINARY)
+def realignment(cropped_img):
+    # Realign the sudoku puzzle
+    cropped_img = cv.resize(cropped_img, (img_w, img_h))
+
+    _, thresh = cv.threshold(cropped_img, 0, 255, cv.THRESH_BINARY)
     
     contours, _ = cv.findContours(
         thresh, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE
@@ -100,7 +104,7 @@ def cut_off(image, contours):
     epsilon = 0.02 * cv.arcLength(cnt, True)
     approx = cv.approxPolyDP(cnt, epsilon, True)
 
-    color_image = cv.cvtColor(cropped, cv.COLOR_GRAY2BGR)
+    color_image = cv.cvtColor(cropped_img, cv.COLOR_GRAY2BGR)
     hieght, width, _ = color_image.shape
 
     pts1 = []
@@ -118,9 +122,9 @@ def cut_off(image, contours):
             cv.circle(color_image, (x, y), 2, (255, 0, 0), -1)
         if count == 4:
             cv.circle(color_image, (x, y), 2, (255, 0, 255), -1)
-
-        pts1.append([x,y])
         count += 1
+        pts1.append([x,y])
+        
 
     print(f"width {width}, hieght {hieght}")
     print(f"pts1 {pts1}, pts2 {pts2}")
@@ -129,14 +133,8 @@ def cut_off(image, contours):
 
     M = cv.getPerspectiveTransform(np.float32(pts1), np.float32(pts2))
     
-    dst = cv.warpPerspective(color_image, M, (img_w,img_h))
-    cv.imshow("warped imaged", dst)
-    return dst
-
-def realignment(cropped_img):
-    # Realign the sudoku puzzle
-    
-    return None
+    realigned = cv.warpPerspective(color_image, M, (img_w,img_h))
+    return realigned
     
 if __name__ == "__main__":
     original = create_image()
@@ -147,11 +145,11 @@ if __name__ == "__main__":
         print("fil_image is None")
     else:
         contours = find_contour(fil_image)
-        processed_image = cut_off(copy_original, contours)
-        
-        image_for_contours = cv.cvtColor(copy_original, cv.COLOR_GRAY2BGR)  # Convert to BGR for contour drawing
-        contour_img = cv.drawContours(image_for_contours, contours, -1, (0, 255, 0), 1)
-        # cv.imshow("processed_image", cv.resize(processed_image, (upscale_img_w, upscale_img_h)))
+        # processed_image = cut_off(copy_original, contours)
+        realigned_image = realignment(copy_original)
+        # image_for_contours = cv.cvtColor(copy_original, cv.COLOR_GRAY2BGR)  # Convert to BGR for contour drawing
+        # contour_img = cv.drawContours(image_for_contours, contours, -1, (0, 255, 0), 1)
+        cv.imshow("realigned_image", cv.resize(realigned_image, (upscale_img_w, upscale_img_h)))
         cv.waitKey(0)
         cv.destroyAllWindows()
         

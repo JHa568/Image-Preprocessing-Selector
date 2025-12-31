@@ -8,7 +8,7 @@ images_loc = "./images/"
 
 entries = {}
 
-original = cv2.imread(images_loc + "processed_image.png") #  
+original = cv2.imread(images_loc + "corrected_image.png") #  
 original = cv2.resize(original, (300, 300))  # Resize for better visibility
 if original is None:
     raise FileNotFoundError("Make sure 'your_image.jpg' exists in the current directory.")

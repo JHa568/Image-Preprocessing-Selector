@@ -28,7 +28,7 @@ BRIGHTNESS_THRESHOLD_HIGHER = 235
 BRIGHTNESS_DIFF = 30
 
 def create_image():
-    img = cv.imread(images_loc + 'Skewed_Real.jpg')
+    img = cv.imread(images_loc + 'corrected_image.png')
     img = cv.resize(img, (img_w, img_h))
     # norm = cv.normalize(img, None, alpha=0, beta=255, norm_type=cv.NORM_MINMAX)
     # blurred = cv.GaussianBlur(norm, (9, 9), 0)
@@ -36,13 +36,13 @@ def create_image():
     norm = cv.normalize(img, None, 0, 255, cv.NORM_MINMAX)
 
     # 2. CLAHE for local contrast boost
-    lab = cv.cvtColor(norm, cv.COLOR_BGR2LAB)
-    l, a, b = cv.split(lab)
-    clahe = cv.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-    l_clahe = clahe.apply(l)
-    lab_clahe = cv.merge((l_clahe, a, b))
-    result = cv.cvtColor(lab_clahe, cv.COLOR_LAB2BGR)
-    return result
+    # lab = cv.cvtColor(norm, cv.COLOR_BGR2LAB)
+    # l, a, b = cv.split(lab)
+    # clahe = cv.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    # l_clahe = clahe.apply(l)
+    # lab_clahe = cv.merge((l_clahe, a, b))
+    # result = cv.cvtColor(lab_clahe, cv.COLOR_LAB2BGR)
+    return norm
 
 def aperture_adjustment(image):
     # Calculate the final aperture value 
@@ -253,7 +253,7 @@ def normalize_for_grid_detection(image, debug=False):
     Returns a binary mask with connected horizontal and vertical lines.
     """
     # 1. Convert to grayscale
-    gray = image #cv.cvtColor(image, cv.COLOR_BGR2GRAY)
+    gray = cv.cvtColor(image, cv.COLOR_BGR2GRAY)
 
     # 2. Apply CLAHE to normalize brightness and contrast
     clahe = cv.createCLAHE(clipLimit=2.0, tileGridSize=(4, 4))  # Smaller grid for smaller image
@@ -261,9 +261,6 @@ def normalize_for_grid_detection(image, debug=False):
 
     # 3. Slight Gaussian blur to reduce noise
     blurred = cv.GaussianBlur(enhanced, (3, 3), 0)  # Smaller kernel
-    
-    
-    
     
     test = cv.bitwise_not(blurred)
     _, thresh = cv.threshold(test,110,255,cv.THRESH_BINARY)
@@ -394,13 +391,13 @@ if __name__ == "__main__":
     if error == False:
         print("fil_image is None")
     else:
-        contours, lines = find_contour(fil_image)
-        processed_image, contour = cut_off(copy_original, contours)
-        non_skewed_image = realignment(copy_original, contour)
-        norm_grid = normalize_for_grid_detection(non_skewed_image)
-        cell_images = get_individual_cells(norm_grid, non_skewed_image)
+        # contours, lines = find_contour(fil_image)
+        # processed_image, contour = cut_off(copy_original, contours)
+        # non_skewed_image = realignment(copy_original, contour)
+        norm_grid = normalize_for_grid_detection(copy_original)
+        cell_images = get_individual_cells(norm_grid, copy_original)
         #digital_sudoku = digitise_sudoku_image(cell_images)
-        cv.imshow("first cell", cell_images[7][0])
+        cv.imshow("first cell", cell_images[0][0])
         #cv.imshow("non-skew", non_skewed_image)
         cv.waitKey(0)
         cv.destroyAllWindows()

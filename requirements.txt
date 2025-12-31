@@ -1,2 +1,6 @@
 pillow
 opencv-python
+scipy
+torch 
+torchvision 
+torchaudio
