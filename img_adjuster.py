@@ -8,10 +8,20 @@ images_loc = "../images/"
 
 entries = {}
 
-original = cv2.imread(images_loc + "COMP4.jpg", cv2.IMREAD_GRAYSCALE) #  
+original = cv2.imread(images_loc + "contour_2.png") #  
 original = cv2.resize(original, (300, 300))  # Resize for better visibility
 if original is None:
     raise FileNotFoundError("Make sure 'your_image.jpg' exists in the current directory.")
+
+norm = cv2.normalize(original, None, 0, 255, cv2.NORM_MINMAX)
+
+# 2. CLAHE for local contrast boost
+lab = cv2.cvtColor(norm, cv2.COLOR_BGR2LAB)
+l, a, b = cv2.split(lab)
+clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+l_clahe = clahe.apply(l)
+lab_clahe = cv2.merge((l_clahe, a, b))
+original = cv2.cvtColor(lab_clahe, cv2.COLOR_LAB2BGR)
 
 # Create main window
 root = tk.Tk()
@@ -29,11 +39,11 @@ label = tk.Label(pic_frame, text="Filtered Image", width=300, height=300)
 label.pack(side="left", padx=5)
 
 is_using_edge_detection = tk.IntVar()
+is_using_otsu_binary_thresholding = tk.IntVar()
 apply_contours = tk.IntVar()
 
 # --- Function to update image ---
 def update_image(*args):
-
     # Read current slider values
     block_size = block_slider.get()
     if block_size % 2 == 0:
@@ -53,7 +63,7 @@ def update_image(*args):
     copy_original = original.copy()
     # Apply adaptive threshold
     
-    thresh = cv2.cvtColor(copy_original, cv2.COLOR_GRAY2BGR)  # Convert to BGR for contour drawing
+    thresh = None # cv2.cvtColor(copy_original, cv2.COLOR_GRAY2BGR)  # Convert to BGR for contour drawing
     if is_using_edge_detection.get() == 1:
         low_canny_thresh = int(low_canny_thresh_slider.get())
         high_canny_thresh = int(high_canny_thresh_slider.get())
@@ -63,9 +73,17 @@ def update_image(*args):
             aperture_size += 1  # must be odd
         print(f"Edge detection: {is_using_edge_detection.get()}, Low: {low_canny_thresh}, High: {high_canny_thresh}, aperture: {aperture_size}")
         thresh = cv2.Canny(thresh, low_canny_thresh, high_canny_thresh, apertureSize=aperture_size)
+    elif is_using_otsu_binary_thresholding.get() == 1:
+        blur = cv2.GaussianBlur(copy_original,(7,7),0)
+        _,thresh = cv2.threshold(blur,0,255,cv2.THRESH_BINARY | cv2.THRESH_OTSU)
     else:
+        gray = cv2.cvtColor(copy_original, cv2.COLOR_BGR2GRAY)
+        clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
+        gray = clahe.apply(gray)
+        norm = cv2.normalize(gray, None, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX)
+        blurred = cv2.GaussianBlur(norm, (9, 9), 0)
         thresh = cv2.adaptiveThreshold(
-            copy_original, 255,
+            blurred, 255,
             cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
             cv2.THRESH_BINARY,
             block_size, C
@@ -73,24 +91,49 @@ def update_image(*args):
     
     # Apply dilation
     if dilate_ksize > 1:
-        kernel = np.ones((dilate_ksize, dilate_ksize), np.uint8)
-        thresh = cv2.dilate(thresh, kernel, iterations=1)
-
+        #kernel = np.ones((dilate_ksize, dilate_ksize), np.uint8)
+        # kernel_h = cv2.getStructuringElement(cv2.MORPH_RECT, (dilate_ksize *dilate_ksize, 1))
+        # kernel_v = cv2.getStructuringElement(cv2.MORPH_RECT, (1, dilate_ksize *dilate_ksize))
+        kernel_h = cv2.getStructuringElement(cv2.MORPH_RECT, (dilate_ksize, dilate_ksize))
+        kernel_v = cv2.getStructuringElement(cv2.MORPH_RECT, (dilate_ksize, dilate_ksize))
+        h = cv2.dilate(thresh, kernel_h, iterations=1)
+        v  = cv2.dilate(thresh, kernel_v, iterations=1)
+        thresh = cv2.add(h, v)
+        
     # Apply erosion
     if erode_ksize > 1:
-        kernel = np.ones((erode_ksize, erode_ksize), np.uint8)
-        thresh = cv2.erode(thresh, kernel, iterations=1)
+        #kernel = np.ones((erode_ksize, erode_ksize), np.uint8)
+        # kernel_h = cv2.getStructuringElement(cv2.MORPH_RECT, (erode_ksize * erode_ksize, 1))
+        # kernel_v = cv2.getStructuringElement(cv2.MORPH_RECT, (1, erode_ksize * erode_ksize))
+        kernel_h = cv2.getStructuringElement(cv2.MORPH_RECT, (erode_ksize, erode_ksize))
+        kernel_v = cv2.getStructuringElement(cv2.MORPH_RECT, (erode_ksize, erode_ksize))
+        h = cv2.erode(thresh, kernel_h, iterations=1)
+        v = cv2.erode(thresh, kernel_v, iterations=1)
+        thresh = cv2.add(h, v)
     
      # Opening
     if open_ksize > 1:
-        kernel = np.ones((open_ksize, open_ksize), np.uint8)
-        thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
+        # h_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (open_ksize * open_ksize, 1))
+        # v_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, open_ksize * open_ksize))
+        h_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (open_ksize, open_ksize))
+        v_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (open_ksize, open_ksize))
+        # kernel = np.ones((open_ksize, open_ksize), np.uint8)
+        h = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, h_kernel)
+        v = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, v_kernel)
+        thresh = cv2.add(h, v)
 
     # Closing
     if close_ksize > 1:
-        kernel = np.ones((close_ksize, close_ksize), np.uint8)
-        thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
-
+        # kernel = np.ones((close_ksize, close_ksize), np.uint8)
+        # h_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (close_ksize * close_ksize, 1))
+        # v_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, close_ksize * close_ksize))
+        h_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (close_ksize, close_ksize))
+        v_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (close_ksize, close_ksize))
+        # kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (close_ksize, close_ksize))
+        # thresh = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
+        h = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, h_kernel)
+        v = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, v_kernel)
+        thresh = cv2.add(h, v)
     # Morphological Gradient
     if grad_ksize > 1:
         kernel = np.ones((grad_ksize, grad_ksize), np.uint8)
@@ -108,8 +151,8 @@ def update_image(*args):
 
     if apply_contours.get() == 1:
         contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        image_for_contours = cv2.cvtColor(copy_original, cv2.COLOR_GRAY2BGR)  # Convert to BGR for contour drawing
-        contour_img = cv2.drawContours(image_for_contours, contours, -1, (0, 255, 0), 1)
+        #image_for_contours = cv2.cvtColor(copy_original, cv2.COLOR_GRAY2BGR)  # Convert to BGR for contour drawing
+        contour_img = cv2.drawContours(copy_original, contours, -1, (0, 255, 0), 1)
         contour_img_tk = ImageTk.PhotoImage(Image.fromarray(contour_img))
         label_apply.imgtk = contour_img_tk
         label_apply.config(image=contour_img_tk)
@@ -190,6 +233,9 @@ high_canny_thresh_slider.set(255)
 
 check_contour = tk.Checkbutton(control_frame, text="apply contours", variable=apply_contours, command=update_image)
 
+is_using_otsu = tk.Checkbutton(control_frame, text="Otsu Thresholding", variable=is_using_otsu_binary_thresholding, command=update_image)
+
+
 button = tk.Button(root, text="Save", command=save_parameters)
 blackhat_slider.set(1)
 button.pack()
@@ -198,7 +244,8 @@ button.pack()
 sliders = [
     block_slider, c_slider, dilate_slider, erode_slider,
     open_slider, close_slider, gradient_slider, tophat_slider, blackhat_slider,
-    check_canny, aperture_canny_thresh_slider, low_canny_thresh_slider, high_canny_thresh_slider, check_contour
+    check_canny, aperture_canny_thresh_slider, low_canny_thresh_slider, high_canny_thresh_slider, check_contour,
+    is_using_otsu
 ]
 
 for idx, slider in enumerate(sliders):
