@@ -1,0 +1,12 @@
+34 - block_size
+-1 - C
+1 - dilate_ksize
+1 - erode_ksize
+1 - open_ksize
+1 - close_ksize
+1 - grad_ksize
+2 - tophat_ksize
+2 - blackhat_ksize
+0 - low_canny_thresh
+0 - high_canny_thresh
+3 - aperture_canny_thresh
