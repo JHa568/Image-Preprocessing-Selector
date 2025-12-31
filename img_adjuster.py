@@ -4,11 +4,11 @@ import tkinter as tk
 from tkinter import *
 from PIL import Image, ImageTk
 
-images_loc = "../images/"
+images_loc = "./images/"
 
 entries = {}
 
-original = cv2.imread(images_loc + "contour_2.png") #  
+original = cv2.imread(images_loc + "processed_image.png") #  
 original = cv2.resize(original, (300, 300))  # Resize for better visibility
 if original is None:
     raise FileNotFoundError("Make sure 'your_image.jpg' exists in the current directory.")

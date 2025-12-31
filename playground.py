@@ -1,7 +1,7 @@
 import cv2 as cv
 import numpy as np
 
-images_loc = "../images/"
+images_loc = "./images/"
 
 ### Current issues
 """_TODO_
@@ -17,6 +17,9 @@ the solve / computer vision algorithm will FAIL.
 img_w = 300
 img_h = 300
 
+upscale_img_w = 500
+upscale_img_h = 500
+
 ### Computer vision Tune Paramter ####
 low_canny_thresh = 0
 high_canny_thresh = 0
@@ -28,7 +31,7 @@ BRIGHTNESS_THRESHOLD_HIGHER = 235
 BRIGHTNESS_DIFF = 30
 
 def create_image():
-    img = cv.imread(images_loc + 'COMP4.jpg', cv.IMREAD_GRAYSCALE)
+    img = cv.imread(images_loc + 'COMP5.jpg', cv.IMREAD_GRAYSCALE)
     img = cv.resize(img, (img_w, img_h))
     return img
 
@@ -82,11 +85,53 @@ def cut_off(image, contours):
     x, y, w, h = cv.boundingRect(largest)
     cropped = result[y:y+h, x:x+w]
     
-    # calculate angle error
-    x_line = [x, x+w]
+    print(f"x: {x}, y: {y}, w: {w}, h: {h}")
+
+    cropped = cv.resize(cropped, (img_w, img_h))
+
+    _, thresh = cv.threshold(cropped, 0, 255, cv.THRESH_BINARY)
     
-    angle_error = 0
-    return cropped
+    contours, _ = cv.findContours(
+        thresh, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE
+    )
+    
+    cnt = max(contours, key=cv.contourArea)
+
+    epsilon = 0.02 * cv.arcLength(cnt, True)
+    approx = cv.approxPolyDP(cnt, epsilon, True)
+
+    color_image = cv.cvtColor(cropped, cv.COLOR_GRAY2BGR)
+    hieght, width, _ = color_image.shape
+
+    pts1 = []
+    pts2 = [[0,0],[0,img_h],[img_w,img_h],[img_w,0]]
+    
+    arrange = [1,2,3,4]
+    count = 1
+    for point in approx:
+        x, y = point[0]
+        if count == 1:
+            cv.circle(color_image, (x, y), 2, (0, 0, 255), -1)
+        if count == 2:
+            cv.circle(color_image, (x, y), 2, (0, 255, 0), -1)
+        if count == 3:
+            cv.circle(color_image, (x, y), 2, (255, 0, 0), -1)
+        if count == 4:
+            cv.circle(color_image, (x, y), 2, (255, 0, 255), -1)
+
+        pts1.append([x,y])
+        count += 1
+
+    print(f"width {width}, hieght {hieght}")
+    print(f"pts1 {pts1}, pts2 {pts2}")
+    cv.imshow("thresh_image", thresh)
+    cv.imshow("rotated_image", color_image)
+
+    M = cv.getPerspectiveTransform(np.float32(pts1), np.float32(pts2))
+    
+    dst = cv.warpPerspective(color_image, M, (img_w,img_h))
+    cv.imshow("warped imaged", dst)
+    return dst
 
 def realignment(cropped_img):
     # Realign the sudoku puzzle
@@ -102,12 +147,11 @@ if __name__ == "__main__":
         print("fil_image is None")
     else:
         contours = find_contour(fil_image)
-        processed_image,  = cut_off(copy_original, contours)
+        processed_image = cut_off(copy_original, contours)
         
         image_for_contours = cv.cvtColor(copy_original, cv.COLOR_GRAY2BGR)  # Convert to BGR for contour drawing
         contour_img = cv.drawContours(image_for_contours, contours, -1, (0, 255, 0), 1)
-        # cv.imshow("original", contour_img)
-        cv.imshow("processed_image", processed_image)
+        # cv.imshow("processed_image", cv.resize(processed_image, (upscale_img_w, upscale_img_h)))
         cv.waitKey(0)
         cv.destroyAllWindows()
         
